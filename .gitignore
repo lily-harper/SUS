@@ -1,8 +1,12 @@
+data/raw/
+
+rubric/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
 
+pull/
 # C extensions
 *.so
 
@@ -218,3 +222,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated runs table
+data/clean_runs.csv
+data/preprocessed_runs.csv
