@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from candidates import CANDIDATES
+from config import CANDIDATES
 from paths import CLEAN_RUNS, CANDIDATE_RUNS_PLOT
 
 

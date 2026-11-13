@@ -1,3 +1,7 @@
+# paths 
+
+
+# best games 
 CANDIDATES = ["Celeste", 
               "Hollow Knight", 
               "Pac-Man",
