@@ -5,8 +5,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data/raw/data/v1"
 OUTPUT = ROOT / "data/clean_runs.csv"
 
-def joins(gamesDF: pd.DataFrame, runsDF: pd.DataFrame, 
-          devDF: pd.DataFrame, platformDF: pd.DataFrame) -> pd.DataFrame:
+def joins(gamesDF: pd.DataFrame, runsDF: pd.DataFrame,
+          devDF: pd.DataFrame, platformDF: pd.DataFrame,
+          categoryDF: pd.DataFrame) -> pd.DataFrame:
     games = gamesDF[["gameId", "gameName", "developers"]].rename(
         columns={"developers": "developerIds"}
     ).copy()
@@ -15,7 +16,13 @@ def joins(gamesDF: pd.DataFrame, runsDF: pd.DataFrame,
         lambda ids: ", ".join(names.get(i, i) for i in ids.split(",") if i)
         if isinstance(ids, str) and ids.strip() else pd.NA
     )
-    return runsDF.merge(games, on="gameId", how="left", validate="many_to_one")
+    categories = categoryDF[["categoryId", "categoryName", "type", "numPlayers"]]
+    platforms = platformDF[["platformId", "name", "releaseYear"]].rename(
+        columns={"platformId": "platform", "name": "platformName"}
+    )
+    runs = runsDF.merge(games, on="gameId", how="left", validate="many_to_one")
+    runs = runs.merge(categories, on="categoryId", how="left", validate="many_to_one")
+    return runs.merge(platforms, on="platform", how="left", validate="many_to_one")
 
 def select_games(df: pd.DataFrame, MIN_SUBS: int) -> pd.DataFrame:
     dates = pd.to_datetime(df["date"], errors="coerce")
@@ -33,8 +40,8 @@ def drop_rows(df: pd.DataFrame) -> pd.DataFrame:
     ).copy()
 
 def drop_columns(df: pd.DataFrame) -> pd.DataFrame :
-    return df.drop(columns=["statusReason", "verifiedDate", "examiner", "players",
-                            "gameId", "developerIds", "categoryId", "levelId"], errors="ignore")
+    return df.drop(columns=["statusReason", "verifiedDate", "examiner",
+                            "variablesAndValues"], errors="ignore")
 
 def refine_target(df: pd.DataFrame) -> pd.DataFrame:
     df = df.loc[df["status"].isin(["verified", "rejected"])].copy()

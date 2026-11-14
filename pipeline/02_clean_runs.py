@@ -17,8 +17,10 @@ def main():
     runs = pd.read_csv(RAW / "runs-data.csv")
     games = pd.read_csv(RAW / "games-data.csv")
     devs = pd.read_csv(RAW / "developers-data.csv")
+    platforms = pd.read_csv(RAW / "platforms-data.csv")
+    categories = pd.read_csv(RAW / "categories-data.csv")
 
-    df = joins(games, runs, devs) 
+    df = joins(games, runs, devs, platforms, categories)
 
     df = select_games(df, MIN_SUBS=MIN_SUBS)
 
@@ -28,7 +30,7 @@ def main():
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT, index=False)
-    print(f"Saved {len(df):,} runs from {df['gameId'].nunique()} games to {OUTPUT}")
+    print(f"Saved {len(df):,} runs from {df['gameName'].nunique()} games to {OUTPUT}")
 
 
 if __name__ == "__main__":
