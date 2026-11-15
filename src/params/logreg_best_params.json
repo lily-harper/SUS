@@ -1,0 +1,4 @@
+{
+  "logistic__C": 0.01,
+  "logistic__class_weight": null
+}

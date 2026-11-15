@@ -8,7 +8,13 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data/raw/data/v1"
 DATASET = "alexmerren1/speedrun-com-data"
-REQUIRED = ("runs-data.csv", "games-data.csv", "developers-data.csv")
+REQUIRED = (
+    "runs-data.csv",
+    "games-data.csv",
+    "developers-data.csv",
+    "platforms-data.csv",
+    "categories-data.csv",
+)
 
 
 def main():

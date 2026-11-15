@@ -3,9 +3,10 @@ from pathlib import Path
 import pandas as pd
 
 from src.config import CLEAN_DATA
-from src.models import make_logistic_pipeline, make_random_forest_pipeline
+from models.logistic import make_logistic_pipeline
+from src.models import make_random_forest_pipeline
 from src.prep import make_xy, temporal_split
-from src.thresholds import threshold_metrics
+from models.thresholds import threshold_metrics
 
 
 df = pd.read_csv(CLEAN_DATA)

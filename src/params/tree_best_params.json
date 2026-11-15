@@ -1,0 +1,5 @@
+{
+  "tree__class_weight": null,
+  "tree__max_depth": 10,
+  "tree__min_samples_leaf": 20
+}

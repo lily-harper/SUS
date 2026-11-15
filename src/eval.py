@@ -1,1 +1,1 @@
-from src.thresholds import threshold_metrics
+from models.thresholds import threshold_metrics

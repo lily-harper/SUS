@@ -1,33 +1,29 @@
-from pathlib import Path
 import pandas as pd 
 
-ROOT = Path(__file__).resolve().parents[1]
-RAW = ROOT / "data/raw/data/v1"
-OUTPUT = ROOT / "data/clean_runs.csv"
+def select_games(
+    df: pd.DataFrame,
+    MIN_SUBS: int,
+    MAX_REVIEWERS: int,
+) -> pd.DataFrame:
+    """
+    Input:
+        df: run rows containing gameId and date.
+        MIN_SUBS: minimum number of pre-2024 submissions per game.
+        MAX_REVIEWERS: exclusive upper bound for unique pre-2024 examiners.
 
-def joins(gamesDF: pd.DataFrame, runsDF: pd.DataFrame,
-          devDF: pd.DataFrame, platformDF: pd.DataFrame,
-          categoryDF: pd.DataFrame) -> pd.DataFrame:
-    games = gamesDF[["gameId", "gameName", "developers"]].rename(
-        columns={"developers": "developerIds"}
-    ).copy()
-    names = devDF.set_index("developerId")["name"].to_dict()
-    games["developerNames"] = games["developerIds"].map(
-        lambda ids: ", ".join(names.get(i, i) for i in ids.split(",") if i)
-        if isinstance(ids, str) and ids.strip() else pd.NA
-    )
-    categories = categoryDF[["categoryId", "categoryName", "type", "numPlayers"]]
-    platforms = platformDF[["platformId", "name", "releaseYear"]].rename(
-        columns={"platformId": "platform", "name": "platformName"}
-    )
-    runs = runsDF.merge(games, on="gameId", how="left", validate="many_to_one")
-    runs = runs.merge(categories, on="categoryId", how="left", validate="many_to_one")
-    return runs.merge(platforms, on="platform", how="left", validate="many_to_one")
-
-def select_games(df: pd.DataFrame, MIN_SUBS: int) -> pd.DataFrame:
+    Output:
+        Runs through 2024 for games meeting the submission threshold.
+    """
     dates = pd.to_datetime(df["date"], errors="coerce")
-    counts = df.loc[dates < pd.Timestamp("2024-01-01")].groupby("gameId").size()
-    selected_ids = counts.index[counts >= MIN_SUBS]
+    pool = df.loc[dates < pd.Timestamp("2024-01-01")]
+    summary = pool.groupby("gameId").agg(
+        submissions=("runId", "size"),
+        reviewers=("examiner", "nunique"),
+    )
+    selected_ids = summary.index[
+        (summary["submissions"] > MIN_SUBS)
+        & (summary["reviewers"] < MAX_REVIEWERS)
+    ]
     return df.loc[
         df["gameId"].isin(selected_ids) & (dates < pd.Timestamp("2025-01-01"))
     ].copy()
@@ -35,15 +31,51 @@ def select_games(df: pd.DataFrame, MIN_SUBS: int) -> pd.DataFrame:
 # removing things 
 
 def drop_rows(df: pd.DataFrame) -> pd.DataFrame:
-    return df.dropna(subset=["runId", "gameId", "date", "status"]).drop_duplicates(
-        subset="runId", keep="first"
-    ).copy()
+    """
+    Input:
+        df: raw run rows containing IDs, date, and status.
+
+    Output:
+        Rows with required fields, unique run IDs, and dates from 2018 through 2024.
+    """
+    df = df.dropna(subset=["runId", "gameId", "date", "status"]).drop_duplicates(
+        subset="runId", keep="first").copy()
+    dates = pd.to_datetime(df["date"], errors="coerce")
+    df = df.loc[
+        (dates >= pd.Timestamp("2018-01-01"))
+        & (dates < pd.Timestamp("2025-01-01"))
+    ].copy()
+
+    return df
 
 def drop_columns(df: pd.DataFrame) -> pd.DataFrame :
+    """Remove review-time and excluded run-setting columns."""
     return df.drop(columns=["statusReason", "verifiedDate", "examiner",
                             "variablesAndValues"], errors="ignore")
 
+
+def clean_release_year(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Input:
+        df: run rows containing releaseYear.
+
+    Output:
+        A copy of df where release years before 1950 or after 2025 are missing.
+    """
+    result = df.copy()
+    invalid_year = (result["releaseYear"] < 1950) | (result["releaseYear"] > 2025)
+    result.loc[invalid_year, "releaseYear"] = pd.NA
+    return result
+
+
 def refine_target(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Input:
+        df: rows with a status column.
+
+    Output:
+        Verified and rejected rows with binary rejected target.
+    """
     df = df.loc[df["status"].isin(["verified", "rejected"])].copy()
     df["rejected"] = df["status"].eq("rejected").astype(int)
     return df.drop(columns="status")
