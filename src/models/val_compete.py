@@ -12,6 +12,7 @@ from src.config import TRAIN_DATA
 
 from src.models.logistic import make_log_reg
 from src.models.tree import make_tree
+from src.models.dummy import make_dummy
 
 def print_things(y_val, y_pred, model, threshold):
     matrix = confusion_matrix(y_val, y_pred, labels = [0, 1])
@@ -33,7 +34,19 @@ def lr(threshold: float):
     probs = model.predict_proba(X_val)[: ,1]
     y_pred = (probs >= threshold).astype(int) 
 
-    print_things(y_val, y_pred, "tree", threshold)
+    print_things(y_val, y_pred, "logistic regression", threshold)
+
+def dummy(threshold: float):
+    """Input: probability threshold. Output: dummy validation confusion matrix and cost."""
+    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
+
+    model = make_dummy()
+    model.fit(X_train, y_train)
+
+    probs = model.predict_proba(X_val)[:, 1]
+    y_pred = (probs >= threshold).astype(int)
+
+    print_things(y_val, y_pred, "dummy", threshold)
 
 def tree(threshold: float):
     X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
@@ -47,6 +60,8 @@ def tree(threshold: float):
     print_things(y_val, y_pred, "tree", threshold)
 
 def main():
+    print("running dummy baseline")
+    dummy(args.dummythreshold)
     print("running logistic regression")
     lr(args.logthreshold)
     tree(args.treethreshold)
@@ -62,10 +77,17 @@ if __name__ == "__main__":
         "--treethreshold", type = float, required = True,
         help = "tree threshold"
     )
+    parser.add_argument(
+        "--dummythreshold", type = float, default = 0.5,
+        help = "dummy baseline threshold (default: 0.5)"
+    )
 
     args = parser.parse_args()
 
     if not 0 <= args.logthreshold <= 1:
         parser.error("--threhold must be tbetween 0 and 1")
+
+    if not 0 <= args.treethreshold <= 1 or not 0 <= args.dummythreshold <= 1:
+        parser.error("thresholds must be between 0 and 1")
 
     main()
