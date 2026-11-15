@@ -6,9 +6,9 @@ from pathlib import Path
 
 from src.config import PARAMS_PATH, tune_set
 
-PARAMS_PATH_LOG = PARAMS_PATH / "logreg_best_params.json"
-PARAMS_PATH_TREE = PARAMS_PATH / "tree_best_params.json"
-PARAMS_PATH_FOREST = PARAMS_PATH / "forest_best_params.json"
+PARAMS_PATH_LOG = PARAMS_PATH / "logreg_2021_best_params.json"
+PARAMS_PATH_TREE = PARAMS_PATH / "tree_2021_best_params.json"
+PARAMS_PATH_FOREST = PARAMS_PATH / "forest_2021_best_params.json"
 
 
 def tune_logreg(log_reg, X_train, y_train, X_val, y_val):
@@ -40,8 +40,8 @@ def tune_tree(tree_pipeline, X_train, y_train, X_val, y_val):
     tree_search = GridSearchCV(
         estimator=tree_pipeline,
         param_grid={
-            "tree__max_depth": [3, 5, 10, None],
-            "tree__min_samples_leaf": [5, 20, 50],
+            "tree__max_depth": [3, 5, 10, 15, None],
+            "tree__min_samples_leaf": [5, 20, 35, 50],
             "tree__class_weight": [None, "balanced"],
         },
         cv=splitter,

@@ -2,15 +2,18 @@ import pandas as pd
 import matplotlib.pyplot as plt 
 import json
 from sklearn.metrics import f1_score
+from src.prep import make_xy
 
 def save_model_threshold_csvs():
     """Input: data/train.csv. Output: one 2022 threshold CSV for each trained model."""
-    from src.config import TRAIN_DATA, data_stuff
     from src.models.logistic import make_log_reg
     from src.models.tree import make_tree
     from src.models.forest import make_forest
 
-    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA, 2022)
+    X_train, y_train = make_xy(pd.read_csv("data/train.csv"))
+    X_tune, y_tune = make_xy(pd.read_csv("data/tune.csv"))
+    X_threshold, y_threshold = make_xy(pd.read_csv("data/threshold.csv"))   
+
     models = {
         "logreg": make_log_reg,
         "tree": make_tree,
@@ -18,13 +21,13 @@ def save_model_threshold_csvs():
     }
 
     for model_name, make_model in models.items():
-        model = make_model(X_train, y_train, X_val, y_val)
+        model = make_model(X_train, y_train, X_tune, y_tune)
         model.fit(X_train, y_train)
-        probabilities = model.predict_proba(X_val)[:, 1]
-        threshold_metrics(y_val, probabilities, save_path=model_name)
+        probabilities = model.predict_proba(X_threshold)[:, 1]
+        threshold_metrics(y_threshold, probabilities, save_path=model_name)
 
 def threshold_metrics(y_true, probabilities, save_path = None):
-    thresholds = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9]
+    thresholds = [0.2, 0.3, 0.4, 0.45, 0.5, .55, 0.6, .65, 0.7, 0.8, 0.85, 0.9]
     rows = []
 
     for threshold in thresholds:

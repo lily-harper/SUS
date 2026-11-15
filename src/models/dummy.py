@@ -13,8 +13,8 @@ def main():
     """Input: training data at TRAIN_DATA. Output: saved validation threshold metrics."""
     X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
 
-    model = make_dummy()
-    model.fit(X_train, y_train)
+    dummy = make_dummy()
+    dummy.fit(X_train, y_train)
     dummy_predictions = dummy.predict(X_val)
 
 if __name__ == "__main__":

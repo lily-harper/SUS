@@ -34,5 +34,9 @@ def main():
     subprocess.run([sys.executable, str(ROOT / "pipeline/03_run_models.py")], check=True)
 
 
+    print("\n\tRunning 07_run_models.py\n", flush=True)
+    subprocess.run([sys.executable, str(ROOT / "pipeline/07_isolation_pca_2d.py")], check=True)
+    
+
 if __name__ == "__main__":
     main()

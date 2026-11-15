@@ -15,7 +15,7 @@ def select_games(
         Runs through 2024 for games meeting the submission threshold.
     """
     dates = pd.to_datetime(df["date"], errors="coerce")
-    pool = df.loc[dates < pd.Timestamp("2024-01-01")]
+    pool = df.loc[dates < pd.Timestamp("2021-01-01")]
     summary = pool.groupby("gameId").agg(
         submissions=("runId", "size"),
         reviewers=("examiner", "nunique"),

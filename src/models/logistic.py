@@ -1,8 +1,6 @@
 import pandas as pd 
 import numpy as np
-
-from src.config import TRAIN_DATA, data_stuff
-
+from src.prep import make_xy
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from src.prep import make_preprocessor
@@ -32,14 +30,15 @@ def make_log_reg(X_train, y_train, X_val, y_val):
     return log_reg.set_params(**best_params)
 
 def main():
-    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
-    
+    X_train, y_train = make_xy(pd.read_csv("data/train.csv"))
+    X_val, y_val = make_xy(pd.read_csv("data/tune.csv")) 
+    X_threshold, y_threshold = make_xy(pd.read_csv("data/threshold.csv"))
+
     model = make_log_reg(X_train, y_train, X_val, y_val)
     model.fit(X_train, y_train)
 
-    probabilities = model.predict_proba(X_val)[:, 1]
-
-    threshold_metrics(y_val, probabilities, save_path = "logreg")
+    probabilities = model.predict_proba(X_threshold)[:, 1]
+    threshold_metrics(y_threshold, probabilities, save_path="logreg")
 
 if __name__ == "__main__":
     main()

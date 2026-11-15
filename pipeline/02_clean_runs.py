@@ -8,14 +8,14 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data/raw/data/v1"
 OUTPUT = ROOT / "data/clean_runs.csv"
-MIN_SUBS = 1500
+MIN_SUBS = 1250
 MAX_REVIEWERS = 20
 
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 from cleaning import clean_release_year, select_games, drop_rows, drop_columns, refine_target
 from src.features import add_timing_features, joins
-from src.prep import save_temporal_split
+from src.prep import save_year_splits
 
 def main():
     runs = pd.read_csv(RAW / "runs-data.csv")
@@ -29,7 +29,7 @@ def main():
     df = clean_release_year(df)
 
     dates = pd.to_datetime(df["date"], errors="coerce")
-    candidate_pool = df.loc[dates < pd.Timestamp("2024-01-01")]
+    candidate_pool = df.loc[dates < pd.Timestamp("2021-01-01")]
     candidates = candidate_pool.groupby(["gameId", "gameName"]).agg(
         submissions=("runId", "size"),
         reviewers=("examiner", "nunique"),
@@ -57,7 +57,7 @@ def main():
     df.to_csv(OUTPUT, index=False)
     print(f"Saved {len(df):,} runs from {df['gameName'].nunique()} games to {OUTPUT}")
 
-    save_temporal_split(df, 2023)
+    save_year_splits(df)
 
 
 if __name__ == "__main__":

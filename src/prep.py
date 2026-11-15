@@ -6,6 +6,26 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 
+def save_year_splits(df: pd.DataFrame) -> None:
+    """
+    Input: cleaned runs with a date column.
+    Output: five CSV files in data/, one for each stage.
+    """
+    dates = pd.to_datetime(df["date"], errors="coerce")
+
+    splits = {
+        "data/train.csv": dates < "2021-01-01",
+        "data/tune.csv": (dates >= "2021-01-01") & (dates < "2022-01-01"),
+        "data/threshold.csv": (dates >= "2022-01-01") & (dates < "2023-01-01"),
+        "data/selection.csv": (dates >= "2023-01-01") & (dates < "2024-01-01"),
+        "data/test.csv": (dates >= "2024-01-01") & (dates < "2025-01-01"),
+    }
+
+    for path, rows in splits.items():
+        split = df.loc[rows].copy()
+        split.to_csv(path, index=False)
+        print(f"Saved {len(split):,} runs to {path}")
+
 def temporal_split(df: pd.DataFrame, validation_year: int):
     dates = pd.to_datetime(df["date"], errors = "coerce")
 

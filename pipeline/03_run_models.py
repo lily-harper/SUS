@@ -17,6 +17,7 @@ from src.models.forest import make_forest
 
 import json
 from src.models.thresholds import choose_thresholds, threshold_metrics
+from src.plots import plot_roc_pr
 
 def get_thresholds():
     """Input: 2022 threshold CSVs. Output: model names mapped to thresholds."""
@@ -30,7 +31,7 @@ def get_thresholds():
 def print_things(y_val, y_pred, model, threshold, ax):
     matrix = confusion_matrix(y_val, y_pred, labels = [0, 1])
 
-    print(f"\n{model} — 2022 validation, threshold {threshold}")
+    print(f"\n{model} — 2023 validation, threshold {threshold}")
     print("                 Predicted 0  Predicted 1")
     print(f"Actual 0 (TN/FP) {matrix[0, 0]:11}  {matrix[0, 1]:11}")
     print(f"Actual 1 (FN/TP) {matrix[1, 0]:11}  {matrix[1, 1]:11}")
@@ -44,23 +45,18 @@ def print_things(y_val, y_pred, model, threshold, ax):
 
     print(f"Cost: {cost} ({1000 * cost / len(y_val):.2f} per 1,000 runs)")
 
-def lr(threshold, X_train, y_train, X_val, y_val, ax):
-    model = make_log_reg(X_train, y_train, X_val, y_val)
+def lr(threshold, X_train, y_train, X_tune, y_tune, X_val, y_val, ax):
+    model = make_log_reg(X_train, y_train, X_tune, y_tune)
     model.fit(X_train, y_train)
 
     probs = model.predict_proba(X_val)[: ,1]
     y_pred = (probs >= threshold).astype(int) 
 
     print_things(y_val, y_pred, "logistic regression", threshold, ax)
+    return probs
 
 def dummy(X_train, y_train, X_val, y_val, ax):
     """Input: probability threshold. Output: dummy validation confusion matrix and cost."""
-    df = pd.read_csv(CLEAN_DATA)
-    train, val = temporal_split(df, 2023)
-
-    X_train, y_train = make_xy(train)
-    X_val, y_val = make_xy(val)
-
     model = make_dummy()
     model.fit(X_train, y_train)
 
@@ -68,49 +64,65 @@ def dummy(X_train, y_train, X_val, y_val, ax):
 
     print_things(y_val, y_pred, "dummy", " ", ax)
 
-def tree(threshold, X_train, y_train, X_val, y_val, ax):
+def tree(threshold, X_train, y_train, X_tune, y_tune, X_val, y_val, ax):
 
-    model = make_tree(X_train, y_train, X_val, y_val)
+    model = make_tree(X_train, y_train, X_tune, y_tune)
     model.fit(X_train, y_train)
 
     probs = model.predict_proba(X_val)[: ,1]
     y_pred = (probs >= threshold).astype(int) 
 
     print_things(y_val, y_pred, "tree", threshold, ax)
+    return probs
 
-def forest(threshold: float, X_train, y_train, X_val, y_val, ax):
+def forest(threshold: float, X_train, y_train, X_tune, y_tune, X_val, y_val, ax):
     """Input: probability threshold. Output: forest validation confusion matrix and cost."""
 
-    model = make_forest(X_train, y_train, X_val, y_val)
+    model = make_forest(X_train, y_train, X_tune, y_tune)
     model.fit(X_train, y_train)
 
     probs = model.predict_proba(X_val)[:, 1]
     y_pred = (probs >= threshold).astype(int)
 
     print_things(y_val, y_pred, "random forest", threshold, ax)
+    return probs
 
 def main():
     save_model_threshold_csvs()
-    X_train, y_train, X_val, y_val = data_stuff(CLEAN_DATA, 2023)
+    X_train, y_train = make_xy(pd.read_csv("data/train.csv"))
+    X_tune, y_tune = make_xy(pd.read_csv("data/tune.csv"))
+    X_val, y_val = make_xy(pd.read_csv("data/selection.csv"))
     thresholds = get_thresholds()
+    scores = {}
     fig, axes = plt.subplots(2, 2, figsize=(10, 9))
 
     dummy(X_train, y_train, X_val, y_val, axes[0, 0])
     if "logreg" in thresholds:
-        lr(thresholds["logreg"], X_train, y_train, X_val, y_val, axes[0, 1])
+        scores["Logistic regression"] = lr(thresholds["logreg"], X_train, y_train, X_tune, y_tune, X_val, y_val, axes[0, 1])
         print("logistic reg")
 
     if "tree" in thresholds:
-        tree(thresholds["tree"], X_train, y_train, X_val, y_val, axes[1, 0])
+        scores["Tree"] = tree(thresholds["tree"], X_train, y_train, X_tune, y_tune, X_val, y_val, axes[1, 0])
         print("tree")
 
     if "forest" in thresholds:
-        forest(thresholds["forest"], X_train, y_train, X_val, y_val, axes[1, 1])
+        scores["Random forest"] = forest(thresholds["forest"], X_train, y_train, X_tune, y_tune, X_val, y_val, axes[1, 1])
         print("forest")
+
+    names = {"Logistic regression": "logreg", "Tree": "tree", "Random forest": "forest"}
+    costs = {}
+    for display_name, probabilities in scores.items():
+        model_name = names[display_name]
+        predictions = probabilities >= thresholds[model_name]
+        costs[model_name] = int(((y_val == 0) & predictions).sum() + 2 * ((y_val == 1) & ~predictions).sum())
+    winner = min(costs, key=costs.get)
+    with open("outputs/selected_model_2023.json", "w") as file:
+        json.dump({"model": winner, "threshold": thresholds[winner]}, file, indent=2)
 
     fig.tight_layout()
     fig.savefig("outputs/confusion_matrices_2023.png", dpi=200)
     plt.close(fig)
+    plot_roc_pr(y_val, scores)
 
 if __name__ == "__main__":
     main()
