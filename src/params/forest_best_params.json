@@ -1,0 +1,5 @@
+{
+  "forest__class_weight": null,
+  "forest__max_depth": null,
+  "forest__min_samples_leaf": 5
+}

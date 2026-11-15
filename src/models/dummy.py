@@ -6,7 +6,7 @@ from src.models.thresholds import threshold_metrics
 
 def make_dummy():
     """Input: none. Output: an unfitted classifier using the training class rate."""
-    return DummyClassifier(strategy="prior")
+    return DummyClassifier(strategy="most_frequent")
 
 
 def main():
@@ -15,10 +15,7 @@ def main():
 
     model = make_dummy()
     model.fit(X_train, y_train)
-
-    probabilities = model.predict_proba(X_val)[:, 1]
-    threshold_metrics(y_val, probabilities, save_path="dummy")
-
+    dummy_predictions = dummy.predict(X_val)
 
 if __name__ == "__main__":
     main()

@@ -8,6 +8,7 @@ from src.config import PARAMS_PATH, tune_set
 
 PARAMS_PATH_LOG = PARAMS_PATH / "logreg_best_params.json"
 PARAMS_PATH_TREE = PARAMS_PATH / "tree_best_params.json"
+PARAMS_PATH_FOREST = PARAMS_PATH / "forest_best_params.json"
 
 
 def tune_logreg(log_reg, X_train, y_train, X_val, y_val):
@@ -55,4 +56,28 @@ def tune_tree(tree_pipeline, X_train, y_train, X_val, y_val):
         json.dump(tree_search.best_params_, f, indent = 2)
 
     return tree_search.best_params_
+
+
+def tune_forest(forest_pipeline, X_train, y_train, X_val, y_val):
+    """Input: forest pipeline and train/validation data. Output: best forest parameters."""
+    X_tuning, y_tuning, validation_fold, splitter = tune_set(X_train, y_train, X_val, y_val)
+
+    forest_search = GridSearchCV(
+        estimator=forest_pipeline,
+        param_grid={
+            "forest__max_depth": [10, None],
+            "forest__min_samples_leaf": [5, 20],
+            "forest__class_weight": [None, "balanced"],
+        },
+        cv=splitter,
+        scoring="neg_log_loss",
+        refit=False,
+    )
+    forest_search.fit(X_tuning, y_tuning)
+
+    PARAMS_PATH_FOREST.parent.mkdir(parents=True, exist_ok=True)
+    with PARAMS_PATH_FOREST.open("w") as f:
+        json.dump(forest_search.best_params_, f, indent=2)
+
+    return forest_search.best_params_
 

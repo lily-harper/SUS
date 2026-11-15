@@ -14,9 +14,9 @@ PARAMS_PATH = Path(__file__).resolve().parent / "params"
 from src.prep import temporal_split, make_xy
 import pandas as pd 
 
-def data_stuff(path):
+def data_stuff(path, year):
     df = pd.read_csv(path)
-    train, val = temporal_split(df, 2022)
+    train, val = temporal_split(df, year)
     
     X_train, y_train = make_xy(train)
     X_val, y_val = make_xy(val)

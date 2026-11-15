@@ -1,20 +1,33 @@
-from sklearn.pipeline import Pipeline 
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
-from src.prep import make_preprocessor 
 
-import argparse
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
+
+from src.models.thresholds import save_model_threshold_csvs
 
 import pandas as pd 
-
+from src.prep import temporal_split, make_xy
 from src.config import data_stuff 
-from src.config import TRAIN_DATA
+from src.config import CLEAN_DATA
 
 from src.models.logistic import make_log_reg
 from src.models.tree import make_tree
 from src.models.dummy import make_dummy
+from src.models.forest import make_forest
 
-def print_things(y_val, y_pred, model, threshold):
+import json
+from src.models.thresholds import choose_thresholds, threshold_metrics
+
+def get_thresholds():
+    """Input: 2022 threshold CSVs. Output: model names mapped to thresholds."""
+    tables = {
+        "logreg": pd.read_csv("outputs/thresholds/logreg_threshold.csv"),
+        "tree": pd.read_csv("outputs/thresholds/tree_threshold.csv"),
+        "forest": pd.read_csv("outputs/thresholds/forest_threshold.csv"),
+    }
+    return json.loads(choose_thresholds(tables))
+
+def print_things(y_val, y_pred, model, threshold, ax):
     matrix = confusion_matrix(y_val, y_pred, labels = [0, 1])
 
     print(f"{model} — 2022 validation, threshold {threshold}")
@@ -23,33 +36,39 @@ def print_things(y_val, y_pred, model, threshold):
     print(f"Actual 1 (FN/TP) {matrix[1, 0]:11}  {matrix[1, 1]:11}")
 
     cost = matrix[0, 1] + 2 * matrix[1, 0]  # FP + 2 × FN
+
+    display = ConfusionMatrixDisplay(matrix, display_labels=[0, 1])
+    display.plot(ax=ax, colorbar=False)
+    ax.set_title(f"{model} — threshold {threshold}")
+    ax.set_xlabel(f"Predicted label\nCost: {cost} ({1000 * cost / len(y_val):.2f} per 1,000)")
+
     print(f"Cost: {cost} ({1000 * cost / len(y_val):.2f} per 1,000 runs)")
 
-def lr(threshold: float):
-    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
-
+def lr(threshold, X_train, y_train, X_val, y_val, ax):
     model = make_log_reg(X_train, y_train, X_val, y_val)
     model.fit(X_train, y_train)
 
     probs = model.predict_proba(X_val)[: ,1]
     y_pred = (probs >= threshold).astype(int) 
 
-    print_things(y_val, y_pred, "logistic regression", threshold)
+    print_things(y_val, y_pred, "logistic regression", threshold, ax)
 
-def dummy(threshold: float):
+def dummy(X_train, y_train, X_val, y_val, ax):
     """Input: probability threshold. Output: dummy validation confusion matrix and cost."""
-    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
+    df = pd.read_csv(CLEAN_DATA)
+    train, val = temporal_split(df, 2023)
+
+    X_train, y_train = make_xy(train)
+    X_val, y_val = make_xy(val)
 
     model = make_dummy()
     model.fit(X_train, y_train)
 
-    probs = model.predict_proba(X_val)[:, 1]
-    y_pred = (probs >= threshold).astype(int)
+    y_pred = model.predict(X_val)
 
-    print_things(y_val, y_pred, "dummy", threshold)
+    print_things(y_val, y_pred, "dummy", " ", ax)
 
-def tree(threshold: float):
-    X_train, y_train, X_val, y_val = data_stuff(TRAIN_DATA)
+def tree(threshold, X_train, y_train, X_val, y_val, ax):
 
     model = make_tree(X_train, y_train, X_val, y_val)
     model.fit(X_train, y_train)
@@ -57,38 +76,39 @@ def tree(threshold: float):
     probs = model.predict_proba(X_val)[: ,1]
     y_pred = (probs >= threshold).astype(int) 
 
-    print_things(y_val, y_pred, "tree", threshold)
+    print_things(y_val, y_pred, "tree", threshold, ax)
+
+def forest(threshold: float, X_train, y_train, X_val, y_val, ax):
+    """Input: probability threshold. Output: forest validation confusion matrix and cost."""
+
+    model = make_forest(X_train, y_train, X_val, y_val)
+    model.fit(X_train, y_train)
+
+    probs = model.predict_proba(X_val)[:, 1]
+    y_pred = (probs >= threshold).astype(int)
+
+    print_things(y_val, y_pred, "random forest", threshold, ax)
 
 def main():
-    print("running dummy baseline\n")
-    dummy(args.dummythreshold)
-    print("running logistic regression\n")
-    lr(args.logthreshold)
-    print("tree\n")
-    tree(args.treethreshold)
+    save_model_threshold_csvs()
+    X_train, y_train, X_val, y_val = data_stuff(CLEAN_DATA, 2023)
+    thresholds = get_thresholds()
+    fig, axes = plt.subplots(2, 2, figsize=(10, 9))
 
+    dummy(X_train, y_train, X_val, y_val, axes[0, 0])
+    if "logreg" in thresholds:
+        lr(thresholds["logreg"], X_train, y_train, X_val, y_val, axes[0, 1])
+        print("logistic reg")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--logthreshold", type = float, required = True,
-        help = "Logistic regression threshold"
-    )
-    parser.add_argument(
-        "--treethreshold", type = float, required = True,
-        help = "tree threshold"
-    )
-    parser.add_argument(
-        "--dummythreshold", type = float, default = 0.5,
-        help = "dummy baseline threshold (default: 0.5)"
-    )
+    if "tree" in thresholds:
+        tree(thresholds["tree"], X_train, y_train, X_val, y_val, axes[1, 0])
+        print("tree")
 
-    args = parser.parse_args()
+    if "forest" in thresholds:
+        forest(thresholds["forest"], X_train, y_train, X_val, y_val, axes[1, 1])
+        print("forest")
 
-    if not 0 <= args.logthreshold <= 1:
-        parser.error("--threhold must be tbetween 0 and 1")
+    fig.tight_layout()
+    fig.savefig("outputs/confusion_matrices_2023.png", dpi=200)
+    plt.close(fig)
 
-    if not 0 <= args.treethreshold <= 1 or not 0 <= args.dummythreshold <= 1:
-        parser.error("thresholds must be between 0 and 1")
-
-    main()

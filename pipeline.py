@@ -30,6 +30,9 @@ def main():
     print("\n\tRunning 02_clean_runs.py\n", flush=True)
     subprocess.run([sys.executable, str(ROOT / "pipeline/02_clean_runs.py")], check=True)
 
+    print("\n\tRunning 03_run_models.py\n", flush=True)
+    subprocess.run([sys.executable, str(ROOT / "pipeline/03_run_models.py")], check=True)
+
 
 if __name__ == "__main__":
     main()
