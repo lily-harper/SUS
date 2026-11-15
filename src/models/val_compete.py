@@ -60,10 +60,11 @@ def tree(threshold: float):
     print_things(y_val, y_pred, "tree", threshold)
 
 def main():
-    print("running dummy baseline")
+    print("running dummy baseline\n")
     dummy(args.dummythreshold)
-    print("running logistic regression")
+    print("running logistic regression\n")
     lr(args.logthreshold)
+    print("tree\n")
     tree(args.treethreshold)
 
 
