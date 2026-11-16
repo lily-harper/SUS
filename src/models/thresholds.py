@@ -27,7 +27,7 @@ def save_model_threshold_csvs():
         threshold_metrics(y_threshold, probabilities, save_path=model_name)
 
 def threshold_metrics(y_true, probabilities, save_path = None):
-    thresholds = [0.2, 0.3, 0.4, 0.45, 0.5, .55, 0.6, .65, 0.7, 0.8, 0.85, 0.9]
+    thresholds = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.45, 0.5, .55, 0.6, .65, 0.7, 0.8, 0.85, 0.9]
     rows = []
 
     for threshold in thresholds:

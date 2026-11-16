@@ -1,14 +1,28 @@
-import pandas as pd 
-from src.config import CLEAN_DATA
+"""Save row counts and rejection prevalence for the five year splits."""
 
-df = pd.read_csv(CLEAN_DATA)
+from pathlib import Path
 
-df.head()
+import pandas as pd
 
-from src.prep import temporal_split 
 
-train, test = temporal_split(df, 2024)
+def main():
+    """Input: five data split CSVs. Output: outputs/split_summary.csv."""
+    split_names = ["train", "tune", "threshold", "selection", "test"]
+    rows = []
 
-train[train["rejected"] == 1].shape[0] / len(train)
+    for name in split_names:
+        data = pd.read_csv(f"data/{name}.csv", usecols=["rejected"])
+        rows.append({
+            "dataset": name,
+            "row_count": len(data),
+            "rejection_prevalence": data["rejected"].mean(),
+        })
 
-test[test["rejected"] == 1].shape[0] / len(test)
+    output = Path("outputs/split_summary.csv")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(output, index=False)
+    print(f"Saved {output}")
+
+
+if __name__ == "__main__":
+    main()

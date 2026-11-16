@@ -2,7 +2,7 @@ from sklearn.metrics import confusion_matrix
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
-
+from src.models.tuning import PARAMS_PATH_LOG, PARAMS_PATH_TREE, PARAMS_PATH_FOREST
 from src.models.thresholds import save_model_threshold_csvs
 
 import pandas as pd 
@@ -117,7 +117,15 @@ def main():
         costs[model_name] = int(((y_val == 0) & predictions).sum() + 2 * ((y_val == 1) & ~predictions).sum())
     winner = min(costs, key=costs.get)
     with open("outputs/selected_model_2023.json", "w") as file:
-        json.dump({"model": winner, "threshold": thresholds[winner]}, file, indent=2)
+        json.dump({
+            "model": winner,
+            "threshold": thresholds[winner],
+            "params": json.loads({
+                "logreg": PARAMS_PATH_LOG,
+                "tree": PARAMS_PATH_TREE,
+                "forest": PARAMS_PATH_FOREST,
+            }[winner].read_text()),
+        }, file, indent=2)
 
     fig.tight_layout()
     fig.savefig("outputs/confusion_matrices_2023.png", dpi=200)
