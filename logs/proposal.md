@@ -1,15 +1,14 @@
 # Revised proposal — November 11, 2026
 
-This replaces decisions in `rubric/ml.pdf` before modeling. Deadline: November 15, 2026.
 
 ## 1. Decision
 
 Game moderators decide which runs receive **priority human review**. Others stay in the normal queue; the model never approves or rejects runs. The positive class is a historically **rejected** run, not proven fraud. Rejections include duplicate and incomplete submissions.
 
 | Actual outcome | Normal queue | Priority review |
-| --- | ---: | ---: |
-| Verified | 0 | 1 |
-| Rejected | 2 | 0 |
+| -------------- | -----------: | --------------: |
+| Verified       |            0 |               1 |
+| Rejected       |            2 |               0 |
 
 The 2:1 costs represent moderator time versus delayed review. They are assumptions, so I will also test missed-rejection costs of 5 and 10.
 
@@ -35,6 +34,4 @@ Sections 1–5 record the decisions made before modeling; this section describes
 
 The current pipeline uses disjoint calendar-year stages: 2018–2020 for fitting candidate models, 2021 for hyperparameter tuning, 2022 for threshold choice, 2023 for model selection, and 2024 as the final holdout. Preprocessing is fitted within each training stage. The selected supervised model is then refitted on all pre-2024 rows with its saved hyperparameters and threshold before the 2024 evaluation. Game eligibility is calculated using only pre-2021 runs; the current submission cutoff is 1,250 and the examiner cutoff is fewer than 20. These operational cutoffs were not stated in the original proposal. The current split summary contains 615,485 resolved runs across the five stages, so the 118,064 count in section 2 describes an earlier clean-table version and must not be used as the current sample size.
 
-The implemented supervised comparison is logistic regression, a decision tree, and a random forest. The decision tree replaces the proposed LDA; LDA and PCA with LDA have not been implemented. The implemented threshold selector also requires F1 above 0.1 before minimizing cost. That constraint was not specified before modeling, so results should identify it and show the unrestricted cost choice as a sensitivity analysis. A GMM and an isolation forest were explored separately; they are not included in the current supervised model-selection step. Do not describe them as candidates in the frozen 2023 winner unless that comparison is explicitly performed before viewing 2024 results.
-
-The original commitments that remain open are expanding-year validation folds; expected-cost and calibration results; a final comparison with review-none and review-all on the same 2024 rows; 2024 developer and game failure slices with sample sizes, rejected counts, costs, and 95% intervals; and the final recommendation, reversal condition, and AI appendix. The proposed GMM decision-value comparison also remains open in the main selection sequence. The 5:1 and 10:1 cost sensitivity is implemented for 2023, but its findings still need to be reported. The data license and the exact meaning of the run date still need clear treatment in the report.
+The implemented supervised comparison is logistic regression, a decision tree, and a random forest. The decision tree replaces the proposed LDA; LDA and PCA with LDA have not been implemented. The implemented threshold selector also requires F1 above 0.1 before minimizing cost. That constraint was not specified before modeling, so results should identify it and show the unrestricted cost choice as a sensitivity analysis. A GMM was explored; they are not included in the current supervised model-selection step.

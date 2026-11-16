@@ -1,20 +1,20 @@
 Model selection summary
 Selected on: 2023 data
-Winner: tree
-Selected threshold: 0.45
+Winner: forest
+Selected threshold: 0.4
 
 2021 tuned hyperparameters:
 logreg:
   logistic__C: 0.1
   logistic__class_weight: None
 
-tree (winner):
+tree:
   tree__class_weight: None
-  tree__max_depth: 10
+  tree__max_depth: 3
   tree__min_samples_leaf: 50
-  Matches frozen choice: True
 
-forest:
+forest (winner):
   forest__class_weight: None
   forest__max_depth: None
   forest__min_samples_leaf: 5
+  Matches frozen choice: True

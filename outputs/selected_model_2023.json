@@ -1,9 +1,9 @@
 {
-  "model": "tree",
-  "threshold": 0.45,
+  "model": "forest",
+  "threshold": 0.4,
   "params": {
-    "tree__class_weight": null,
-    "tree__max_depth": 10,
-    "tree__min_samples_leaf": 50
+    "forest__class_weight": null,
+    "forest__max_depth": null,
+    "forest__min_samples_leaf": 5
   }
 }

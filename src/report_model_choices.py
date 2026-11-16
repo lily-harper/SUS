@@ -6,7 +6,7 @@ from pathlib import Path
 
 def main():
     """Input: saved choice and hyperparameter JSON files. Output: outputs/model_choices.txt."""
-    root = Path(__file__).resolve().parent
+    root = Path(__file__).resolve().parent.parent
     choice = json.loads((root / "outputs/selected_model_2023.json").read_text())
     parameter_files = {
         "logreg": root / "src/params/logreg_2021_best_params.json",

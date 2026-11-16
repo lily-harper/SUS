@@ -2,11 +2,12 @@
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from pathlib import Path
 from sklearn.metrics import auc, precision_recall_curve, roc_curve
 
 
 def plot_rejection_over_time(df):
-    """Input: cleaned runs with date and rejected. Output: monthly rejection-rate plot."""
+    """Input: cleaned runs with date and rejected. Output: saved monthly rejection-rate PNG."""
     runs = df.copy()
     runs["month"] = pd.to_datetime(runs["date"]).dt.to_period("M").dt.to_timestamp()
     monthly = runs.groupby("month")["rejected"].mean()
@@ -14,8 +15,12 @@ def plot_rejection_over_time(df):
     ax.axvline(pd.Timestamp("2024-01-01"), color="gray", linestyle="--", label="2024 test starts")
     ax.set(title="Monthly rejection rate", xlabel="Submission month", ylabel="Rejected runs (%)")
     ax.legend()
-    plt.tight_layout()
-    plt.show()
+    figure = ax.figure
+    figure.tight_layout()
+    output = Path(__file__).resolve().parent.parent / "outputs/reject_over_time.png"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=200)
+    plt.close(figure)
 
 
 def plot_covariance(train, numeric_columns):
@@ -54,3 +59,9 @@ def plot_roc_pr(y_true, scores):
         fig.tight_layout()
         fig.savefig(f"outputs/{curve_name}_2023.png", dpi=200)
         plt.close(fig)
+
+
+if __name__ == "__main__":
+    root = Path(__file__).resolve().parent.parent
+    cleaned_runs = pd.read_csv(root / "data/clean_runs.csv")
+    plot_rejection_over_time(cleaned_runs)

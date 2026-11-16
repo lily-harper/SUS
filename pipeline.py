@@ -23,7 +23,7 @@ def main():
     existing_path = environment.get("PYTHONPATH")
     environment["PYTHONPATH"] = f"{ROOT}{os.pathsep}{existing_path}" if existing_path else str(ROOT)
 
-    print("\tRunning 01_get_kaggle_data.py")
+    print("\n\tRunning 01_get_kaggle_data.py")
     if not all((RAW / name).is_file() for name in REQUIRED):
         print("Pulling data from Kaggle", flush=True)
         subprocess.run(
@@ -47,6 +47,12 @@ def main():
 
     print("\n\tRunning 08_cost_sensitivity.py\n", flush=True)
     subprocess.run([sys.executable, str(ROOT / "pipeline/08_cost_sensitivity.py")], check=True, cwd=ROOT, env=environment)
+
+    print("\n\tRunning 09_error_analysis.py\n", flush=True)
+    subprocess.run([sys.executable, str(ROOT / "pipeline/09_error_analysis.py")], check=True, cwd=ROOT, env=environment)
+
+    print("\n\tRunning 10_hybrid_anomaly_escalation.py\n", flush=True)
+    subprocess.run([sys.executable, str(ROOT / "pipeline/10_hybrid_anomaly_escalation.py")], check=True, cwd=ROOT, env=environment)
     
 
 if __name__ == "__main__":

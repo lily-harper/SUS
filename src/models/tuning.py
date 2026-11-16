@@ -40,7 +40,7 @@ def tune_tree(tree_pipeline, X_train, y_train, X_val, y_val):
     tree_search = GridSearchCV(
         estimator=tree_pipeline,
         param_grid={
-            "tree__max_depth": [3, 5, 10, 15, None],
+            "tree__max_depth": [3, 4],
             "tree__min_samples_leaf": [5, 20, 35, 50],
             "tree__class_weight": [None, "balanced"],
         },

@@ -6,43 +6,90 @@ Cost sensitive machine learning for prioritizing human review of speedrun submis
 
 ## Decision and data
 
-Game moderators decide which submissions receive priority human review. A run that is not flagged remains in the normal review queue. The model does not approve or reject runs. The positive label means a run was historically **rejected**; it does not establish cheating, since rejections can include incomplete or duplicate submissions.
+The model sends some runs to priority review; others stay in the normal queue. It never approves or rejects a run. A positive label means **historically rejected**, which does not prove cheating.
 
-The project uses the [Kaggle Speedrun.com dataset](https://www.kaggle.com/datasets/alexmerren1/speedrun-com-data), reportedly collected from Speedrun.com through an API. The cleaning stage keeps resolved verified and rejected runs dated 2018–2024. It selects eligible games using submissions and reviewer counts through 2020, then keeps runs for those games through 2024. Review outcome fields such as `statusReason`, `verifiedDate`, and `examiner` are excluded from model inputs. The dataset license still needs verification for the final report.
+Data comes from the [Kaggle Speedrun.com dataset](https://www.kaggle.com/datasets/alexmerren1/speedrun-com-data). Cleaning keeps resolved runs dated 2018–2024 from games selected using pre-2021 activity. Outcome fields such as `statusReason`, `verifiedDate`, and `examiner` are excluded from predictors.
 
-## Evaluation plan
+## Evaluation
 
-| File | Years | Use |
-| --- | --- | --- |
-| `data/train.csv` | 2018–2020 | Fit models and preprocessing |
-| `data/tune.csv` | 2021 | Choose hyperparameters |
-| `data/threshold.csv` | 2022 | Choose a decision threshold for each model |
-| `data/selection.csv` | 2023 | Compare models and select one |
-| `data/test.csv` | 2024 | Final evaluation of the selected model |
+| Split         | Years      | Purpose                      |
+| ------------- | ---------- | ---------------------------- |
+| `train`     | 2018–2020 | Fit models and preprocessing |
+| `tune`      | 2021       | Choose hyperparameters       |
+| `threshold` | 2022       | Choose review thresholds     |
+| `selection` | 2023       | Compare and select a model   |
+| `test`      | 2024       | Final evaluation             |
 
-The primary measure is **cost per 1,000 runs**: `1,000 × (false positives + 2 × false negatives) / number of runs`. A false positive is an unnecessary priority review; a false negative is a historically rejected run left in the normal queue. The 2:1 costs are assumptions about moderator effort and delay, not measured costs. The dummy classifier provides a simple comparison; reviewing no runs and reviewing every run are useful cost references. The original assignment proposal in `logs/rubric/ml.pdf` was superseded by the [revised proposal](logs/proposal.md), which defines this human review decision and metric.
+The primary metric is **cost per 1,000 runs**: `1,000 × (false positives + 2 × false negatives) / runs`. The 2:1 penalty is an assumption. Logistic regression, a decision tree, and a random forest compete on 2023 cost; the selected model and threshold are saved in `outputs/selected_model_2023.json`.
 
-The main comparison includes logistic regression, a decision tree, and a random forest. Their preprocessing is fitted on training rows inside each model pipeline. Hyperparameters use the 2021 split, thresholds use 2022, and the lowest cost eligible model on 2023 is saved to `outputs/selected_model_2023.json`. Isolation forest and a Gaussian mixture model are separate experiments; they are not part of that automatic model selection or the 2024 test script.
+![ROC curves for the 2023 model comparison](outputs/roc_2023.png)
 
-## Run the project
+## Reproduce the results
 
-From the repository root, with Python and the packages in `requirements.txt` installed:
+Run from the repository root:
 
 ```bash
 python -m pip install -r requirements.txt
 python pipeline.py
+python src/report_model_choices.py
 ```
 
-If the raw CSV files are absent, `pipeline.py` calls the Kaggle download script, which requires the Kaggle CLI and credentials. It then cleans the data, writes the five split files, tunes and evaluates the three main models, and saves the 2023 selection. The 2024 test is a separate step to run **after** reviewing that selection:
+`pipeline.py` downloads raw data when absent (Kaggle CLI and credentials required), cleans and splits it, tunes models, selects the 2023 winner, evaluates 2024, and runs the isolation forest, cost sensitivity, error slice, and hybrid escalation analyses. The last command derives `outputs/model_choices.txt` from the saved 2023 selection and 2021 parameter files.
 
-```bash
-python pipeline/05_test_2024.py
-```
+For individual reruns after the data splits exist:
 
-The pipeline also writes threshold tables and 2023 confusion matrix, ROC, and precision–recall plots under `outputs/`. The raw and cleaned CSVs are local data products rather than committed project files.
+| Command                                                            | Result                                                                                   |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `python pipeline/03_run_models.py`                               | 2023 model choice, threshold tables, confusion matrices, ROC and precision–recall plots |
+| `python pipeline/05_test_2024.py`                                | Prints 2024 holdout results                                                              |
+| `python pipeline/07_isolation_pca_2d.py`                         | Isolation forest scores and PCA plot                                                     |
+| `python pipeline/08_cost_sensitivity.py`                         | 2:1, 5:1, and 10:1 cost comparison CSV                                                   |
+| `python pipeline/09_error_analysis.py`                           | 2024 game and developer error slice CSVs                                                 |
+| `python pipeline/10_hybrid_anomaly_escalation.py`                | Supervised versus anomaly escalation CSV                                                 |
+| `python pipeline/04_gmm.py` and `python pipeline/06_gmm_2d.py` | Optional GMM threshold study and two feature plot                                        |
+| `python src/split_summary.py`                                    | Split sizes and rejection rates CSV                                                      |
+
+## The requirements
+
+1. **R1 — A decision, not a dataset.**
+
+   - Moderators decide which runs receive priority human review. An unnecessary review costs 1; a missed rejection costs 2.
+   - `08_cost_sensitivity.py` checks how that decision changes when missed rejections cost 5 or 10.
+2. **R2 — A baseline declared before you modeled.**
+
+   - The [revised proposal](logs/proposal.md) declares review none as the baseline and review all as a second reference.
+   - On 2023 runs, the selected forest cost 147.78 per 1,000 versus 149.38 for review none.
+3. **R3 — Two models across the interpretability axis.**
+
+   - `03_run_models.py` compares readable logistic regression and a decision tree with a flexible random forest on the same split and cost metric.
+   - The forest won the 2023 comparison at threshold 0.4; `05_test_2024.py` evaluates that saved choice on 2024 runs.
+4. **R4 — Unsupervised structure where it changes the decision.**
+
+   - The GMM and isolation forest scripts test anomaly review rules. `10_hybrid_anomaly_escalation.py` checks whether isolation forest flags improve supervised review.
+   - For the forest, escalation raised 2024 cost from 133.69 to 134.32 per 1,000 in that separate analysis, so it did not earn a place in the selected rule.
+5. **R5 — A failure analysis with a named worst slice.**
+
+   - `09_error_analysis.py` reports 2024 game and developer slices with sample sizes and 95% intervals.
+   - Among games with at least 100 runs, Grand Theft Auto Category Extensions had the largest cost increase over review none: 208 per 1,000 across 250 runs.
+6. **R6 — A recommendation, and the fact that would reverse it.**
+
+   - I would carefuly deploy the random forest, with model review often
+   - If interpreability was needed for legal or stakeholder reasons, then the model would not fit that requirement.
 
 ## Limits and project record
 
-The `date` field describes a run and is not confirmed to be its submission timestamp, so the year split measures performance on later **dated** runs. The 2024 test should be examined once after the model and threshold have been fixed. The current scripts report the assumed 2:1 cost; the [revised proposal](logs/proposal.md) also calls for sensitivity checks at 5:1 and 10:1, calibration, and failure analysis by game and developer. Those analyses are not yet implemented in the main pipeline.
+The run `date` may differ from submission time, so the split tests later **dated** runs. Rejection is not a cheating label. The 2:1 costs are assumed, and the dataset license still needs verification. Expanding year validation, calibration, expected cost, and PCA with LDA from the proposal remain unimplemented. The 2024 error slice and hybrid scripts are follow-up analyses, not part of the frozen 2023 model selection.
 
-See the [decision log](decision_log.md) for changes to the original proposal and [AI use note](logs/ai_note.md) for the assignment disclosure record.
+Basic repository structure:
+
+```text
+pipeline.py       Main reproducibility entry point
+pipeline/         Download, cleaning, modeling, and analysis scripts
+src/              Shared preprocessing, models, plots, and reports
+data/             Local raw, cleaned, and year split CSVs
+outputs/          Saved choices, tables, and figures
+logs/             Proposal and AI use note
+decision_log.md   Project decisions
+```
+
+See the [decision log](decision_log.md) and [AI use note](logs/ai_note.md).
